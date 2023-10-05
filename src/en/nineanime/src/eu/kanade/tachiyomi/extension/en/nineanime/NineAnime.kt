@@ -121,6 +121,10 @@ class NineAnime : ParsedHttpSource() {
         return GET(baseUrl + "${manga.url}?waring=1", headers)
     }
 
+    override fun getChapterUrl(chapter: SChapter): String {
+        return baseUrl + chapter.url
+    }
+
     override fun chapterListSelector() = "ul.detail-chlist li"
 
     override fun chapterFromElement(element: Element): SChapter {
