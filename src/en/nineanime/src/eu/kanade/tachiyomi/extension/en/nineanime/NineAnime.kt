@@ -32,7 +32,9 @@ class NineAnime : ParsedHttpSource() {
         .followRedirects(true)
         .build()
 
-    val pagesUrl: String = "https://www.glanceoflife.com"
+    companion object {
+        private const val PAGES_URL = "https://www.glanceoflife.com"
+    }
 
     // not necessary for normal usage but added in an attempt to fix usage with VPN (see #3476)
     override fun headersBuilder(): Headers.Builder = Headers.Builder()
@@ -161,15 +163,18 @@ class NineAnime : ParsedHttpSource() {
         val id: String = chapter.url.substring(chapter.url.lastIndexOf("/", chapter.url.length - 2))
 
         val pageListHeaders = headersBuilder().add("Referer", "$baseUrl/manga/").build()
-        val response = client.newCall(GET("$pagesUrl/c/nineanime$id", pageListHeaders)).execute()
-        val script = response.asJsoup().select("script").firstOrNull()?.data()
-
-        val link = script?.split("\"")?.get(1)
-        return GET(pagesUrl + link, pageListHeaders)
+        return GET("$PAGES_URL/c/nineanime$id", pageListHeaders)
     }
 
     override fun pageListParse(document: Document): List<Page> {
-        val script = document.select("script:containsData(all_imgs_url)").firstOrNull()?.data()
+        val pageListHeaders = headersBuilder().add("Referer", "$baseUrl/manga/").build()
+
+        val scripturl = document.select("script").firstOrNull()?.data()
+
+        val link = scripturl?.split("\"")?.get(1)
+        val pages = client.newCall(GET(PAGES_URL + link, pageListHeaders)).execute().asJsoup()
+
+        val script = pages.select("script:containsData(all_imgs_url)").firstOrNull()?.data()
             ?: throw Exception("all_imgsurl not found")
         return Regex(""""(http.*)",""").findAll(script).mapIndexed { i, mr ->
             Page(i, "", mr.groupValues[1])
