@@ -7,6 +7,7 @@ import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.online.ParsedHttpSource
+import eu.kanade.tachiyomi.util.asJsoup
 import okhttp3.Headers
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -30,6 +31,8 @@ class NineAnime : ParsedHttpSource() {
     override val client: OkHttpClient = network.cloudflareClient.newBuilder()
         .followRedirects(true)
         .build()
+
+    val pagesUrl: String = "https://www.glanceoflife.com"
 
     // not necessary for normal usage but added in an attempt to fix usage with VPN (see #3476)
     override fun headersBuilder(): Headers.Builder = Headers.Builder()
@@ -151,8 +154,14 @@ class NineAnime : ParsedHttpSource() {
     // Pages
 
     override fun pageListRequest(chapter: SChapter): Request {
+        val id: String = chapter.url.substring(chapter.url.lastIndexOf("/", chapter.url.length - 2))
+
         val pageListHeaders = headersBuilder().add("Referer", "$baseUrl/manga/").build()
-        return GET(baseUrl + chapter.url, pageListHeaders)
+        val response = client.newCall(GET("$pagesUrl/c/nineanime$id", pageListHeaders)).execute()
+        val script = response.asJsoup().select("script").firstOrNull()?.data()
+
+        val link = script?.split("\"")?.get(1)
+        return GET(pagesUrl + link, pageListHeaders)
     }
 
     override fun pageListParse(document: Document): List<Page> {
